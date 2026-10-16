@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snack Stand – logic tests</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; color: #1F2328; background: #F5F0E6; }
+    pre { background: #fff; padding: 16px; border-radius: 12px; white-space: pre-wrap; }
+    .ok { color: #2E8B6E; font-weight: 700; }
+    .bad { color: #D64545; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <h1>Snack Stand – logic tests</h1>
+  <p>Money, cart, cost, profit, date, CSV and backup logic. Open this page in a browser; it needs no setup.</p>
+  <p id="summary"></p>
+  <pre id="out">running…</pre>
+
+<script type="module">
+import * as L from './logic.js';
+import * as P from './pricing.js';
+
+const lines = [];
+let pass = 0, fail = 0;
+function eq(name, actual, expected) {
+  const ok = JSON.stringify(actual) === JSON.stringify(expected);
+  if (ok) pass++; else fail++;
+  lines.push(`${ok ? 'PASS' : 'FAIL'}  ${name}` + (ok ? '' : `\n        expected ${JSON.stringify(expected)}\n        got      ${JSON.stringify(actual)}`));
+}
+function throws(name, fn) {
+  let threw = false;
+  try { fn(); } catch (_) { threw = true; }
+  eq(name, threw, true);
+}
+
+// ----- parsePrice / parseCount -----
+eq('parsePrice "1.50"', L.parsePrice('1.50'), 150);
+eq('parsePrice "1.5"', L.parsePrice('1.5'), 150);
+eq('parsePrice "$2"', L.parsePrice('$2'), 200);
+eq('parsePrice "0"', L.parsePrice('0'), 0);
+eq('parsePrice ".99"', L.parsePrice('.99'), 99);
+eq('parsePrice "1,000.25"', L.parsePrice('1,000.25'), 100025);
+eq('parsePrice "" is invalid', L.parsePrice(''), null);
+eq('parsePrice "abc" is invalid', L.parsePrice('abc'), null);
+eq('parsePrice "-1" is invalid', L.parsePrice('-1'), null);
+eq('parsePrice "1.234" is invalid', L.parsePrice('1.234'), null);
+eq('parseCount "30"', L.parseCount('30'), 30);
+eq('parseCount " 12 "', L.parseCount(' 12 '), 12);
+eq('parseCount "0" is invalid', L.parseCount('0'), null);
+eq('parseCount "1.5" is invalid', L.parseCount('1.5'), null);
+eq('parseCount "" is invalid', L.parseCount(''), null);
+
+// ----- formatting -----
+eq('formatCents 0', L.formatCents(0), '$0.00');
+eq('formatCents 150', L.formatCents(150), '$1.50');
+eq('formatCents 100025', L.formatCents(100025), '$1,000.25');
+eq('formatCents -250', L.formatCents(-250), '-$2.50');
+eq('centsToPlain 5', L.centsToPlain(5), '0.05');
+
+// ----- pack cost -----
+eq('$30.00 pack of 30 = $1.00 each', L.unitCostFromPack(3000, 30), 100);
+eq('$12.99 pack of 24 = $0.54 each (rounded)', L.unitCostFromPack(1299, 24), 54);
+eq('$10.00 pack of 3 = $3.33 each', L.unitCostFromPack(1000, 3), 333);
+eq('pack of 0 is invalid', L.unitCostFromPack(1000, 0), null);
+eq('missing pack price is invalid', L.unitCostFromPack(null, 10), null);
+
+// ----- items -----
+const v1item = { id: 'a', name: 'Chips', priceCents: 150, emoji: '🥔', active: true, createdAt: 1 };
+const chips = L.normalizeItem(v1item);
+eq('old item gets costCents null (no cost set)', chips.costCents, null);
+eq('old item gets no image and empty supplier', [chips.image, chips.supplier, chips.costMode], [null, '', 'unit']);
+eq('itemUnitNet is null without a cost', L.itemUnitNet(chips), null);
+const soda = L.normalizeItem({ id: 'b', name: 'Soda', priceCents: 200, costCents: 75, packPriceCents: 1800, packQty: 24, supplier: 'Costco', image: 'data:image/jpeg;base64,xx', createdAt: 2 });
+eq('item with pack info keeps costMode pack', soda.costMode, 'pack');
+eq('itemUnitNet 200 - 75', L.itemUnitNet(soda), 125);
+eq('bad image string is dropped', L.normalizeItem({ id: 'c', name: 'x', priceCents: 1, image: 'http://evil' }).image, null);
+eq('matchesSearch by name', L.matchesSearch(soda, 'SOD'), true);
+eq('matchesSearch by supplier', L.matchesSearch(soda, 'costco'), true);
+eq('matchesSearch no match', L.matchesSearch(soda, 'water'), false);
+eq('matchesSearch empty query matches', L.matchesSearch(soda, '  '), true);
+eq('initialOf', L.initialOf('pretzel'), 'P');
+
+// ----- cart math -----
+const cart = [];
+L.cartAdd(cart, chips); L.cartAdd(cart, chips); L.cartAdd(cart, soda);
+eq('tapping + twice makes qty 2', cart[0].qty, 2);
+eq('cart total 2×1.50 + 2.00 = 5.00', L.cartTotal(cart), 500);
+eq('cart cost counts unknown cost as 0 (soda 75)', L.cartCost(cart), 75);
+eq('cart unknown-cost qty = 2 chips', L.cartUnknownCostQty(cart), 2);
+L.cartSetQty(cart, 'b', 3);
+eq('set soda qty 3 → total 9.00', L.cartTotal(cart), 900);
+L.cartSetQty(cart, 'a', 0);
+eq('qty 0 removes the line', cart.map((l) => l.itemId), ['b']);
+const trap = [];
+L.cartAdd(trap, L.normalizeItem({ id: 't', name: 'Gum', priceCents: 110 }));
+L.cartSetQty(trap, 't', 3);
+eq('3 × $1.10 is exactly $3.30', L.formatCents(L.cartTotal(trap)), '$3.30');
+
+// ----- change -----
+eq('change due 10.00 − 7.50', L.changeDue(750, 1000), 250);
+eq('short payment is negative', L.changeDue(750, 500), -250);
+
+// ----- sale snapshot -----
+const cart2 = [];
+L.cartAdd(cart2, chips); L.cartAdd(cart2, chips); L.cartAdd(cart2, soda);
+const sale = L.buildSale(cart2, 1760000000000, 'sale-1', 1000);
+eq('sale gross', sale.totalCents, 500);
+eq('sale cost (soda only, chips unknown)', sale.costCents, 75);
+eq('sale net = gross − cost', L.saleNet(sale), 425);
+eq('sale paid and change saved', [sale.paidCents, sale.changeCents], [1000, 500]);
+eq('sale lines copy price, cost and qty', sale.lines, [{ name: 'Chips', unitPriceCents: 150, unitCostCents: null, qty: 2 }, { name: 'Soda', unitPriceCents: 200, unitCostCents: 75, qty: 1 }]);
+eq('unknown-cost qty on the sale', L.saleUnknownCostQty(sale), 2);
+const noPay = L.buildSale(cart2, 1, 'sale-2');
+eq('sale without paid amount stores nulls', [noPay.paidCents, noPay.changeCents], [null, null]);
+soda.costCents = 999; soda.priceCents = 1; chips.name = 'Renamed';
+eq('editing items later does not change the sale', [sale.lines[1].unitCostCents, sale.lines[0].name], [75, 'Chips']);
+
+// ----- old sales still load -----
+const v1sale = L.normalizeSale({ id: 's', timestamp: 5, totalCents: 550, lines: [{ name: 'Soda', unitPriceCents: 200, qty: 2 }, { name: 'Chips', unitPriceCents: 150, qty: 1 }] });
+eq('old sale: cost 0, net = gross', [v1sale.costCents, L.saleNet(v1sale)], [0, 550]);
+eq('old sale: unknown cost qty 3', L.saleUnknownCostQty(v1sale), 3);
+eq('old sale: paid/change not recorded', [v1sale.paidCents, v1sale.changeCents], [null, null]);
+eq('normalizeSale derives change from paid', L.normalizeSale({ id: 's', timestamp: 1, totalCents: 300, paidCents: 500, lines: [] }).changeCents, 200);
+
+// ----- summary & ranking -----
+const sales = [
+  { id: '1', timestamp: 1, totalCents: 500, costCents: 75, lines: [{ name: 'Chips', unitPriceCents: 150, unitCostCents: null, qty: 2 }, { name: 'Soda', unitPriceCents: 200, unitCostCents: 75, qty: 1 }] },
+  { id: '2', timestamp: 2, totalCents: 400, costCents: 150, lines: [{ name: 'Soda', unitPriceCents: 200, unitCostCents: 75, qty: 2 }] },
+].map(L.normalizeSale);
+const sum = L.summarizeSales(sales);
+eq('summary count / units', [sum.count, sum.units], [2, 5]);
+eq('summary gross 900, cost 225, net 675', [sum.grossCents, sum.costCents, sum.netCents], [900, 225, 675]);
+eq('summary unknown-cost qty', sum.unknownCostQty, 2);
+eq('summary items ranked by qty', sum.items.map((i) => `${i.name}:${i.qty}`), ['Soda:3', 'Chips:2']);
+eq('summary per-item net', sum.items.map((i) => i.netCents), [375, 300]);
+eq('rankBy net puts Soda first', L.rankBy(sum.items, 'netCents')[0].name, 'Soda');
+
+// ----- periods -----
+eq('periodRange today is 24h', (() => { const r = L.periodRange('today', '2026-10-15'); return r.endMs - r.startMs; })(), 86400000);
+eq('periodRange week is 7 days', (() => { const r = L.periodRange('week', '2026-10-15'); return (r.endMs - r.startMs) / 86400000; })(), 7);
+eq('periodRange week starts 6 days back', L.dateKey(new Date(L.periodRange('week', '2026-10-15').startMs)), '2026-10-09');
+eq('periodRange all starts at 0', L.periodRange('all', '2026-10-15').startMs, 0);
+
+// ----- CSV -----
+const csv = L.salesToCSV([L.normalizeSale({ id: 's1', timestamp: new Date(2026, 9, 15, 14, 5).getTime(), totalCents: 350, paidCents: 500, lines: [{ name: 'Big, "Fancy" Pretzel', unitPriceCents: 350, unitCostCents: 120, qty: 1 }, { name: 'Mystery', unitPriceCents: 0, qty: 1 }] })]);
+const csvLines = csv.trim().split('\r\n');
+eq('CSV header has the money columns', csvLines[0], L.CSV_COLUMNS.join(','));
+eq('CSV escapes commas and quotes', csvLines[1].includes('"Big, ""Fancy"" Pretzel"'), true);
+eq('CSV line with cost: unit cost, line cost, line net, paid, change', csvLines[1].split('","').pop().split(',').slice(-11).join(','), '1,3.50,3.50,1.20,1.20,2.30,3.50,1.20,2.30,5.00,1.50');
+eq('CSV line without cost leaves cost cells blank', csvLines[2].split(',').slice(7, 10), ['', '', '']);
+
+// ----- dates -----
+eq('dateKey', L.dateKey(new Date(2026, 0, 5)), '2026-01-05');
+eq('shiftDateKey across month end', L.shiftDateKey('2026-01-31', 1), '2026-02-01');
+eq('friendlyDay yesterday', L.friendlyDay('2026-10-14', '2026-10-15'), 'Yesterday');
+
+// ----- backup validation -----
+const good = { items: [{ id: 'a', name: 'Chips', priceCents: 150, image: 'data:image/jpeg;base64,abc' }], sales: [{ id: 's', timestamp: 1, paidCents: 400, lines: [{ name: 'Chips', unitPriceCents: 150, unitCostCents: 60, qty: 2 }] }] };
+const v = L.validateBackup(good);
+eq('validateBackup keeps the photo and fills defaults', [v.items[0].image, v.items[0].active, v.items[0].costCents], ['data:image/jpeg;base64,abc', true, null]);
+eq('validateBackup recomputes sale totals, cost and change', [v.sales[0].totalCents, v.sales[0].costCents, v.sales[0].changeCents], [300, 120, 100]);
+throws('validateBackup rejects a non-object', () => L.validateBackup('nope'));
+throws('validateBackup rejects missing sales', () => L.validateBackup({ items: [] }));
+throws('validateBackup rejects a negative price', () => L.validateBackup({ items: [{ id: 'a', name: 'x', priceCents: -1 }], sales: [] }));
+throws('validateBackup rejects a bad line', () => L.validateBackup({ items: [], sales: [{ id: 's', timestamp: 1, lines: [{ name: 'x' }] }] }));
+
+// ----- ingredients & recipes -----
+eq('parseAmount "0.5"', L.parseAmount('0.5'), 0.5);
+eq('parseAmount "8"', L.parseAmount('8'), 8);
+eq('parseAmount "0" is invalid', L.parseAmount('0'), null);
+eq('parseAmount "abc" is invalid', L.parseAmount('abc'), null);
+const butter = L.normalizeIngredient({ id: 'g1', name: 'Butter', packPriceCents: 300, packUnits: 8, unit: 'tbsp', createdAt: 1 });
+const cheese = L.normalizeIngredient({ id: 'g2', name: 'Cheese', packPriceCents: 400, packUnits: 16, unit: 'slice', createdAt: 2 });
+const bread = L.normalizeIngredient({ id: 'g3', name: 'Bread', packPriceCents: 250, packUnits: 20, unit: 'slice', createdAt: 3 });
+const byId = new Map([butter, cheese, bread].map((g) => [g.id, g]));
+eq('normalizeIngredient defaults unit to each', L.normalizeIngredient({ id: 'x', name: 'Salt', packPriceCents: 100 }).unit, 'each');
+eq('butter costs 37.5¢ per tbsp', P.ingredientUnitCost(butter), 37.5);
+const gc = P.recipeCost([{ ingredientId: 'g1', amount: 1 }, { ingredientId: 'g2', amount: 2 }, { ingredientId: 'g3', amount: 2 }], byId);
+eq('grilled cheese = 37.5 + 50 + 25 = $1.13', [gc.totalCents, gc.ingredientCents, gc.missing], [113, 113, 0]);
+eq('recipe with other cost adds it', P.recipeCost([{ ingredientId: 'g1', amount: 1 }], byId, 10).totalCents, 48);
+const miss = P.recipeCost([{ ingredientId: 'gone', amount: 1 }, { ingredientId: 'g2', amount: 1 }], byId);
+eq('missing ingredient counts $0 and is flagged', [miss.totalCents, miss.missing, miss.lines[0].missing], [25, 1, true]);
+const recipeItem = L.normalizeItem({ id: 'i', name: 'Grilled Cheese', priceCents: 300, recipe: [{ ingredientId: 'g1', amount: '1' }, { ingredientId: '', amount: 2 }, { ingredientId: 'g2', amount: 0 }] });
+eq('normalizeItem keeps only valid recipe lines and picks recipe mode', [recipeItem.recipe, recipeItem.costMode], [[{ ingredientId: 'g1', amount: 1 }], 'recipe']);
+eq('normalizeItem default extraCostCents 0', recipeItem.extraCostCents, 0);
+
+// ----- price suggestions -----
+eq('suggestPrice $1.13 at 60% → $3.00 (25¢ steps)', P.suggestPrice(113, 60, 25), { priceCents: 300, profitCents: 187, marginPct: 62 });
+eq('suggestPrice exact (1¢ steps)', P.suggestPrice(113, 60, 1).priceCents, 283);
+eq('suggestPrice $1.00 at 50% is exactly $2.00', P.suggestPrice(100, 50, 25).priceCents, 200);
+eq('suggestPrice rounds to $1 steps', P.suggestPrice(161, 70, 100).priceCents, 600);
+eq('suggestPrice rejects 100%', P.suggestPrice(100, 100, 25), null);
+eq('suggestPrice rejects unknown cost', P.suggestPrice(null, 60, 25), null);
+eq('marginOf $3.00 price, $1.13 cost = 62%', P.marginOf(300, 113), 62);
+eq('marginOf with no price is null', P.marginOf(0, 100), null);
+
+// ----- spreadsheet parsing -----
+eq('parseDelimited commas + quotes', P.parseDelimited('a,b\n"x, y",2\n'), [['a', 'b'], ['x, y', '2']]);
+eq('parseDelimited tabs (pasted from a sheet)', P.parseDelimited('Item\tIngredient\r\nBurger\tBun'), [['Item', 'Ingredient'], ['Burger', 'Bun']]);
+eq('parseDelimited skips blank lines and BOM', P.parseDelimited('﻿a,b\n\n1,2'), [['a', 'b'], ['1', '2']]);
+eq('matchColumns understands synonyms', P.matchColumns(['Menu item', 'Ingredient', 'Qty', 'Package price', 'Servings', 'Unit', 'Selling price']), { item: 0, ingredient: 1, amount: 2, packPrice: 3, packUnits: 4, unit: 5, sellPrice: 6 });
+eq('matchColumns: "price" alone means package price', P.matchColumns(['Ingredient', 'Price', 'Units']), { ingredient: 0, packPrice: 1, packUnits: 2 });
+
+const sheet = P.parseDelimited(P.TEMPLATE_CSV);
+const plan = P.buildImportPlan(sheet, [], []);
+eq('template plan: 7 ingredients, 4 items, 6 recipe lines, no errors', [plan.ingredients.length, plan.items.length, plan.recipes.length, plan.errors.length], [7, 4, 6, 0]);
+eq('template plan: butter is new, $3.00 for 8 tbsp at Costco', plan.ingredients.find((g) => g.name === 'Butter'), { key: 'butter', name: 'Butter', unit: 'tbsp', isNew: true, prices: [{ store: 'Costco', packPriceCents: 300, packUnits: 8 }] });
+const packPlan = P.buildImportPlan([['Item', 'Ingredient', 'Amount used', 'Package price', 'Units per package', 'Unit', 'Store', 'Selling price'], ['Soda', '', '', '18.49', '35', 'can', 'Costco', '1.50'], ['Chips', '', '', '23.49', 'lots', 'bag', 'Costco', '']], [], []);
+eq('item row with pack info becomes a pack-priced item', packPlan.items.find((i) => i.name === 'Soda').pack, { packPriceCents: 1849, packQty: 35, store: 'Costco' });
+eq('pack item keeps its selling price', packPlan.items.find((i) => i.name === 'Soda').priceCents, 150);
+eq('bad units per package on a pack item is reported', [packPlan.errors.length, packPlan.errors[0].line], [1, 3]);
+eq('template plan now includes pack items', P.buildImportPlan(P.parseDelimited(P.TEMPLATE_CSV), [], []).items.filter((i) => i.pack).map((i) => i.name), ['Soda', 'Chips']);
+const twoStores = P.buildImportPlan([['Ingredient', 'Package price', 'Units', 'Unit', 'Store'], ['Butter', '3.00', '8', 'tbsp', 'Costco'], ['Butter', '5.49', '32', 'tbsp', 'Publix']], [], []);
+eq('one ingredient can get prices at two stores', twoStores.ingredients[0].prices.map((p) => `${p.store} ${p.packPriceCents}/${p.packUnits}`), ['Costco 300/8', 'Publix 549/32']);
+
+// ----- stores -----
+const legacy = L.normalizeIngredient({ id: 'g', name: 'Butter', packPriceCents: 300, packUnits: 8, unit: 'tbsp', supplier: 'Costco', createdAt: 1 });
+eq('old single-price ingredient becomes one store price', legacy.prices, [{ store: 'Costco', packPriceCents: 300, packUnits: 8, checkedAt: 1 }]);
+eq('old ingredient keeps its pack fields and active store', [legacy.packPriceCents, legacy.packUnits, legacy.activeStore], [300, 8, 'Costco']);
+eq('old ingredient without a store is labelled "Unknown store"', L.normalizeIngredient({ id: 'g', name: 'Salt', packPriceCents: 100, packUnits: 50 }).prices[0].store, L.UNKNOWN_STORE);
+eq('normalizePrice with a blank store uses the same label', L.normalizePrice({ store: ' ', packPriceCents: 1, packUnits: 1 }).store, L.UNKNOWN_STORE);
+const multi = L.normalizeIngredient({ id: 'g', name: 'Butter', unit: 'tbsp', prices: [{ store: 'Costco', packPriceCents: 300, packUnits: 8 }, { store: 'Publix', packPriceCents: 549, packUnits: 32 }, { store: 'Bad', packPriceCents: -1, packUnits: 0 }] });
+eq('invalid store prices are dropped', multi.prices.length, 2);
+eq('pickPrice: my store wins when present', L.pickPrice(multi, 'costco').store, 'Costco');
+eq('pickPrice: otherwise the cheapest per unit', L.pickPrice(multi, "Trader Joe's").store, 'Publix');
+eq('pickPrice: no prices → null', L.pickPrice({ prices: [] }, 'Costco'), null);
+eq('syncIngredientPrice switches the pack fields to Publix', (() => { const g = { ...multi }; const changed = L.syncIngredientPrice(g, 'Publix'); return [changed, g.packPriceCents, g.packUnits, g.activeStore]; })(), [true, 549, 32, 'Publix']);
+eq('syncIngredientPrice reports no change when already on that store', (() => { const g = { ...multi }; L.syncIngredientPrice(g, 'Costco'); return L.syncIngredientPrice(g, 'Costco'); })(), false);
+eq('storeSearchUrl: Costco search', P.storeSearchUrl('Costco', 'butter'), 'https://www.costco.com/CatalogSearch?dept=All&keyword=butter');
+eq('storeSearchUrl: Publix search', P.storeSearchUrl('publix', 'sliced cheese'), 'https://www.publix.com/search?searchTerm=sliced%20cheese');
+eq('storeSearchUrl: unknown store falls back to a web search with the location', P.storeSearchUrl("Joe's Market", 'butter', 'West Palm Beach, FL'), 'https://www.google.com/search?q=butter%20price%20Joe\'s%20Market%20West%20Palm%20Beach%2C%20FL');
+eq('STORES includes the big ones', ['Costco', 'Publix', 'Whole Foods', "Trader Joe's", 'Walmart'].every((s) => L.STORES.includes(s)), true);
+eq('template plan: burger gets its selling price', plan.items.find((i) => i.name === 'Burger').priceCents, 500);
+eq('template plan: relish is ingredient-only', plan.recipes.some((r) => r.ingredientKey === 'relish'), false);
+const bad = P.buildImportPlan([['Item', 'Ingredient', 'Amount', 'Package price', 'Units'], ['Taco', 'Shell', 'two', '4.00', '12'], ['Taco', 'Mystery', '1', '', '']], [], []);
+eq('import plan reports a bad amount and an unknown ingredient', bad.errors.map((e) => e.line), [2, 3]);
+eq('import plan still lists the item', bad.items.length, 1);
+const known = P.buildImportPlan([['Item', 'Ingredient', 'Amount'], ['Toast', 'Butter', '1']], [], [butter]);
+eq('existing ingredient needs no package info', [known.errors.length, known.recipes.length], [0, 1]);
+throws('matchColumns needs an Ingredient column', () => { const p = P.buildImportPlan([['Item', 'Price'], ['x', '1']], [], []); if (!p.errors.length) throw new Error('no error'); throw new Error(p.errors[0].message); });
+eq('sheetFetchUrls: edit link with a tab → gviz CSV then export, keeping gid',
+  P.sheetFetchUrls('https://docs.google.com/spreadsheets/d/1AbC_d-9/edit?usp=sharing#gid=123'),
+  ['https://docs.google.com/spreadsheets/d/1AbC_d-9/gviz/tq?tqx=out:csv&gid=123', 'https://docs.google.com/spreadsheets/d/1AbC_d-9/export?format=csv&gid=123']);
+eq('sheetFetchUrls: link without a tab has no gid', P.sheetFetchUrls('https://docs.google.com/spreadsheets/d/1AbC/edit')[0], 'https://docs.google.com/spreadsheets/d/1AbC/gviz/tq?tqx=out:csv');
+eq('sheetFetchUrls: published-to-web link', P.sheetFetchUrls('https://docs.google.com/spreadsheets/d/e/2PACX-xyz/pubhtml'), ['https://docs.google.com/spreadsheets/d/e/2PACX-xyz/pub?output=csv']);
+eq('sheetFetchUrls: missing https is added', P.sheetFetchUrls('docs.google.com/spreadsheets/d/1AbC/edit').length, 2);
+eq('sheetFetchUrls: a plain CSV link is used as is', P.sheetFetchUrls('https://example.com/costs.csv'), ['https://example.com/costs.csv']);
+eq('sheetFetchUrls: nonsense gives nothing', [P.sheetFetchUrls('not a link at all'), P.sheetFetchUrls(''), P.sheetFetchUrls('https://docs.google.com/document/d/1AbC/edit')], [[], [], []]);
+eq('isGoogleSheetLink', [P.isGoogleSheetLink('https://docs.google.com/spreadsheets/d/x/edit'), P.isGoogleSheetLink('https://example.com/a.csv')], [true, false]);
+eq('shortLink trims long paths', P.shortLink('https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit').endsWith('…'), true);
+eq('pricingCSV has a header and one row per item', P.pricingCSV([{ name: 'A', costCents: 113, priceCents: 300, suggestion: P.suggestPrice(113, 60, 25) }], 60).trim().split('\r\n').length, 2);
+
+// ----- backup with ingredients -----
+const vb = L.validateBackup({ items: [], sales: [], ingredients: [{ id: 'g', name: 'Bun', packPriceCents: 300, packUnits: 8, unit: 'each' }] });
+eq('validateBackup keeps ingredients', vb.ingredients.length, 1);
+eq('validateBackup without ingredients gives an empty list', L.validateBackup({ items: [], sales: [] }).ingredients, []);
+throws('validateBackup rejects a nameless ingredient', () => L.validateBackup({ items: [], sales: [], ingredients: [{ id: 'g', name: '' }] }));
+
+// ----- misc -----
+eq('uuid looks like a uuid', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(L.uuid()), true);
+eq('firstGrapheme keeps one emoji', L.firstGrapheme(' 🥨🍪 '), '🥨');
+
+document.getElementById('out').textContent = lines.join('\n');
+const summary = document.getElementById('summary');
+summary.innerHTML = fail ? `<span class="bad">${fail} failed</span>, ${pass} passed` : `<span class="ok">All ${pass} tests passed ✓</span>`;
+document.title = fail ? `FAIL (${fail}) – Snack Stand tests` : `PASS (${pass}) – Snack Stand tests`;
+</script>
+</body>
+</html>

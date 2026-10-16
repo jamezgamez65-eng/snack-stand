@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <title>Snack Stand</title>
+  <meta name="description" content="A simple point-of-sale register for a small snack stand. Works offline.">
+  <meta name="theme-color" content="#1F2328">
+  <meta name="color-scheme" content="light">
+
+  <!-- iOS home-screen app settings -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Snack Stand">
+  <meta name="format-detection" content="telephone=no">
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="preload" href="./fonts/baloo2.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+    <symbol id="i-register" viewBox="0 0 24 24"><path d="M6 3h12v18l-2-1.5L14 21l-2-1.5L10 21l-2-1.5L6 21z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+    <symbol id="i-sales" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15h3M13 15h3"/></symbol>
+    <symbol id="i-profit" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M6 16l4-5 3 3 5-7"/><path d="M14 7h4v4"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 12V4h8l9.5 9.5-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></symbol>
+    <symbol id="i-backup" viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4"/><path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  </defs>
+</svg>
+
+<div class="app" id="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="10" cy="9" r="3.6" fill="#F4B942"/><circle cx="16" cy="7" r="4" fill="#F4B942"/><circle cx="22" cy="9" r="3.6" fill="#F4B942"/>
+        <path d="M7 13h18l-2.2 15H9.2z" fill="#fff"/>
+        <path d="M7 13h3.6l1.3 15H9.2zM14.2 13h3.6v15h-3.6zM21.4 13H25l-2.2 15h-2.8z" fill="#D64545"/>
+        <rect x="5.5" y="10.5" width="21" height="4" rx="2" fill="#D64545"/>
+      </svg>
+      <h1>Snack Stand</h1>
+    </div>
+    <div class="topbar__meta">
+      <span class="net-badge" id="net-badge" hidden>Offline</span>
+      <span class="topbar__date" id="topbar-date"></span>
+    </div>
+  </header>
+
+  <main class="screens">
+
+    <!-- ===== Dashboard ===== -->
+    <section class="screen" data-screen="dashboard" id="screen-dashboard">
+      <div class="screen__scroll">
+        <div class="seg" id="period-seg" role="tablist" aria-label="Time period">
+          <button class="seg__btn is-active" type="button" role="tab" data-period="today">Today</button>
+          <button class="seg__btn" type="button" role="tab" data-period="week">This week</button>
+          <button class="seg__btn" type="button" role="tab" data-period="all">All time</button>
+        </div>
+        <p class="period-sub" id="period-sub"></p>
+
+        <div class="hero">
+          <div class="hero__item hero__item--gross">
+            <span class="hero__label">Gross income</span>
+            <strong id="dash-gross">$0.00</strong>
+            <span class="hero__hint">money taken in</span>
+          </div>
+          <div class="hero__item hero__item--net">
+            <span class="hero__label">Net income</span>
+            <strong id="dash-net">$0.00</strong>
+            <span class="hero__hint" id="dash-cost">after $0.00 of cost</span>
+          </div>
+          <div class="hero__item">
+            <span class="hero__label">Sales</span>
+            <strong id="dash-count">0</strong>
+            <span class="hero__hint" id="dash-units">0 items sold</span>
+          </div>
+        </div>
+
+        <div class="note" id="dash-note" hidden></div>
+
+        <div class="empty" id="dash-empty" hidden>
+          <strong id="dash-empty-title">No sales yet today</strong>
+          <span>Ring up a sale in the Register and it shows up here.</span>
+        </div>
+
+        <section class="panel" id="dash-units-panel">
+          <div class="panel__head"><h3>Best sellers</h3><span class="panel__sub">by units sold</span></div>
+          <div class="bars bars--units" id="bars-units"></div>
+        </section>
+
+        <section class="panel" id="dash-net-panel">
+          <div class="panel__head"><h3>Most profitable</h3><span class="panel__sub">by net income</span></div>
+          <div class="bars bars--net" id="bars-net"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ===== Register ===== -->
+    <section class="screen screen--register" data-screen="register" id="screen-register">
+      <div class="menu-pane">
+        <div class="search">
+          <svg class="search__icon" aria-hidden="true"><use href="#i-search"/></svg>
+          <input class="search__input" id="search-register" type="text" placeholder="Search items" autocomplete="off" autocorrect="off" autocapitalize="off" enterkeyhint="search" aria-label="Search items">
+          <button class="search__clear" id="search-register-clear" type="button" aria-label="Clear search" hidden>×</button>
+        </div>
+        <div class="tiles" id="menu-grid"></div>
+        <div class="empty" id="menu-empty" hidden>
+          <strong>No items yet</strong>
+          <span>Add some in the Menu tab.</span>
+        </div>
+        <div class="empty" id="menu-nomatch" hidden>
+          <strong>No items match</strong>
+          <span id="menu-nomatch-text"></span>
+        </div>
+      </div>
+
+      <aside class="cart" id="cart" aria-label="Current sale">
+        <div class="cart__header">
+          <button class="link-btn cart__close" id="cart-close" type="button">‹ Items</button>
+          <h2>Current sale</h2>
+          <button class="link-btn link-btn--danger" id="cart-clear" type="button" hidden>Clear</button>
+        </div>
+        <div class="cart__lines" id="cart-lines"></div>
+        <div class="cart__empty" id="cart-empty">
+          <strong>Nothing here yet</strong>
+          <span>Tap + on an item to start a sale.</span>
+        </div>
+        <div class="cart__footer">
+          <div class="cart__total"><span id="cart-count">0 items</span><strong id="cart-total">$0.00</strong></div>
+          <button class="btn btn--primary btn--big btn--full" id="checkout-btn" type="button" disabled>Charge</button>
+        </div>
+      </aside>
+
+      <button class="cart-bar" id="cart-bar" type="button" hidden>
+        <span class="cart-bar__count" id="cart-bar-count">0</span>
+        <span class="cart-bar__label">View sale ›</span>
+        <span class="cart-bar__total" id="cart-bar-total">$0.00</span>
+      </button>
+    </section>
+
+    <!-- ===== Sales ===== -->
+    <section class="screen" data-screen="sales" id="screen-sales">
+      <div class="screen__scroll">
+        <div class="day-nav">
+          <button class="btn btn--icon" id="day-prev" type="button" aria-label="Previous day">‹</button>
+          <label class="day-nav__date">
+            <span id="day-label">Today</span>
+            <input type="date" id="day-input" aria-label="Pick a day">
+          </label>
+          <button class="btn btn--icon" id="day-next" type="button" aria-label="Next day">›</button>
+          <button class="btn btn--outline" id="day-today" type="button" hidden>Today</button>
+        </div>
+
+        <div class="daycard">
+          <div class="daycard__head">
+            <strong id="day-title">Today</strong>
+            <span id="day-count">0 sales</span>
+          </div>
+          <div class="math">
+            <div class="math__row">
+              <span class="math__label">Gross income <small>money taken in</small></span>
+              <strong id="stat-gross">$0.00</strong>
+            </div>
+            <div class="math__row math__row--minus">
+              <span class="math__label">Cost <small>what the items cost you</small></span>
+              <strong id="stat-cost">$0.00</strong>
+            </div>
+            <div class="math__row math__row--total">
+              <span class="math__label">Net income <small>what you kept</small></span>
+              <strong id="stat-net">$0.00</strong>
+            </div>
+          </div>
+          <div class="note" id="sales-note" hidden></div>
+          <div class="sold" id="stat-items" hidden></div>
+        </div>
+
+        <h3 class="list-title">Sales <span>newest first · tap one for details</span></h3>
+        <div class="sales-list" id="sales-list"></div>
+        <div class="empty" id="sales-empty" hidden>
+          <strong id="sales-empty-text">No sales yet today</strong>
+          <span>Completed sales show up here.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Profit ===== -->
+    <section class="screen" data-screen="profit" id="screen-profit">
+      <div class="screen__scroll">
+        <label class="field">
+          <span>Pick an item</span>
+          <select class="input input--big" id="profit-item" aria-label="Item"></select>
+        </label>
+        <div class="empty" id="profit-empty" hidden>
+          <strong>No items yet</strong>
+          <span>Add items in the Menu tab and they show up here.</span>
+        </div>
+
+        <div id="profit-body">
+          <section class="panel">
+            <div class="panel__head"><h3>Each one you sell</h3><span class="panel__sub" id="profit-margin"></span></div>
+            <div class="kpis">
+              <div class="kpi"><span class="kpi__label">You sell it for</span><strong id="profit-price">$0.00</strong></div>
+              <div class="kpi"><span class="kpi__label">It costs you</span><strong id="profit-cost">$0.00</strong></div>
+              <div class="kpi kpi--net"><span class="kpi__label">You keep</span><strong id="profit-net">$0.00</strong></div>
+            </div>
+            <div class="bars bars--compare" id="profit-bars-item"></div>
+            <p class="hint hint--block" id="profit-sentence"></p>
+            <h4 class="sub-title">What goes into the cost</h4>
+            <div class="receipt" id="profit-breakdown"></div>
+            <div class="row-btns row-btns--top">
+              <button class="btn btn--outline" id="profit-edit" type="button">Change price or cost</button>
+              <button class="btn btn--outline" id="profit-options" type="button">See price options</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel__head"><h3>All you've sold</h3><span class="panel__sub" id="profit-period-sub"></span></div>
+            <div class="seg seg--small seg--tight" id="profit-period" role="tablist" aria-label="Time period">
+              <button class="seg__btn is-active" type="button" role="tab" data-period="today">Today</button>
+              <button class="seg__btn" type="button" role="tab" data-period="week">This week</button>
+              <button class="seg__btn" type="button" role="tab" data-period="all">All time</button>
+            </div>
+            <div class="kpis">
+              <div class="kpi"><span class="kpi__label">Sold</span><strong id="profit-units">0</strong></div>
+              <div class="kpi"><span class="kpi__label">Gross income</span><strong id="profit-gross">$0.00</strong></div>
+              <div class="kpi kpi--net"><span class="kpi__label">Net income</span><strong id="profit-sales-net">$0.00</strong></div>
+            </div>
+            <div class="bars bars--compare" id="profit-bars-sales"></div>
+            <p class="hint hint--block" id="profit-sales-sentence"></p>
+            <div class="note" id="profit-note" hidden></div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Menu ===== -->
+    <section class="screen" data-screen="menu" id="screen-menu">
+      <div class="screen__scroll">
+        <div class="seg menu-seg" id="menu-seg" role="tablist" aria-label="Menu sections">
+          <button class="seg__btn is-active" type="button" role="tab" data-view="items">Items</button>
+          <button class="seg__btn" type="button" role="tab" data-view="ingredients">Ingredients</button>
+          <button class="seg__btn" type="button" role="tab" data-view="pricing">Pricing</button>
+        </div>
+
+        <div id="menu-view-items">
+          <div class="menu-tools">
+            <div class="search">
+              <svg class="search__icon" aria-hidden="true"><use href="#i-search"/></svg>
+              <input class="search__input" id="search-menu" type="text" placeholder="Search items" autocomplete="off" autocorrect="off" autocapitalize="off" enterkeyhint="search" aria-label="Search menu items">
+              <button class="search__clear" id="search-menu-clear" type="button" aria-label="Clear search" hidden>×</button>
+            </div>
+            <button class="btn btn--primary" id="add-item" type="button">+ Add item</button>
+          </div>
+          <div class="note note--tip" id="menu-tip" hidden></div>
+          <div class="item-list" id="item-list"></div>
+          <div class="empty" id="menu-manage-empty" hidden>
+            <strong>No items yet</strong>
+            <span>Tap “Add item” to put something on the menu.</span>
+          </div>
+          <div class="empty" id="menu-manage-nomatch" hidden>
+            <strong>No items match</strong>
+            <span id="menu-manage-nomatch-text"></span>
+          </div>
+        </div>
+
+        <div id="menu-view-ingredients" hidden>
+          <div class="menu-tools">
+            <div class="search">
+              <svg class="search__icon" aria-hidden="true"><use href="#i-search"/></svg>
+              <input class="search__input" id="search-ingredients" type="text" placeholder="Search ingredients" autocomplete="off" autocorrect="off" autocapitalize="off" enterkeyhint="search" aria-label="Search ingredients">
+              <button class="search__clear" id="search-ingredients-clear" type="button" aria-label="Clear search" hidden>×</button>
+            </div>
+            <button class="btn btn--primary" id="add-ingredient" type="button">+ Add ingredient</button>
+          </div>
+          <div class="store-card" id="store-card">
+            <span class="store-card__text" id="store-card-text"></span>
+            <button class="btn btn--outline" id="store-change" type="button">Change</button>
+          </div>
+          <p class="hint hint--block">Write down what a package of each ingredient costs at your store and how many portions it holds. You can keep prices for several stores; the app uses your store's price, or the cheapest one you have. Build items from ingredients and the cost per item is worked out for you, and kept up to date when a price changes.</p>
+          <div class="item-list" id="ingredient-list"></div>
+          <div class="empty" id="ingredient-empty" hidden>
+            <strong>No ingredients yet</strong>
+            <span>Add butter, buns, cheese, ketchup… with what a package costs you.</span>
+          </div>
+          <div class="empty" id="ingredient-nomatch" hidden>
+            <strong>No ingredients match</strong>
+            <span id="ingredient-nomatch-text"></span>
+          </div>
+        </div>
+
+        <div id="menu-view-pricing" hidden>
+          <div class="panel">
+            <div class="panel__head"><h3>Pricing assistant</h3><span class="panel__sub">exact math · works offline</span></div>
+            <p class="hint hint--block">Works out what each item costs to make and suggests a selling price that keeps your profit. Tap an item to see the breakdown and other price options.</p>
+            <div class="store-card store-card--inline">
+              <span class="store-card__text" id="pricing-store-text"></span>
+              <button class="link-btn" id="pricing-store-change" type="button">Change</button>
+            </div>
+            <div class="field">
+              <span>How much of each sale should be profit?</span>
+              <div class="seg seg--small seg--tight" id="margin-seg" role="tablist"></div>
+            </div>
+            <div class="field">
+              <span>Round prices up to the next</span>
+              <div class="seg seg--small seg--tight" id="round-seg" role="tablist"></div>
+            </div>
+            <div class="row-btns">
+              <button class="btn btn--outline" id="import-sheet" type="button">Import spreadsheet…</button>
+              <button class="btn btn--outline" id="export-pricing" type="button">Export prices (CSV)</button>
+            </div>
+            <div class="linked" id="linked-sheet" hidden>
+              <span class="linked__text" id="linked-text"></span>
+              <button class="btn btn--primary" id="sync-sheet" type="button">Update from spreadsheet</button>
+            </div>
+          </div>
+          <div class="note" id="pricing-note" hidden></div>
+          <div class="pricing-list" id="pricing-list"></div>
+          <div class="empty" id="pricing-empty" hidden>
+            <strong>Nothing to price yet</strong>
+            <span>Add items under Items, or import a spreadsheet.</span>
+          </div>
+          <button class="btn btn--primary btn--full" id="apply-all-prices" type="button" hidden>Apply all suggested prices</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Backup ===== -->
+    <section class="screen" data-screen="backup" id="screen-backup">
+      <div class="screen__scroll">
+        <div class="card">
+          <h2>Backup</h2>
+          <p>Everything, including photos and ingredients, is stored only on this device. Export a backup now and then and keep the file somewhere safe (Files, iCloud, or email it to yourself).</p>
+          <button class="btn btn--primary btn--full" id="export-json" type="button">Export data (JSON)</button>
+          <button class="btn btn--outline btn--full" id="import-json" type="button">Import data…</button>
+          <input type="file" id="import-file" accept=".json,application/json" hidden>
+        </div>
+
+        <div class="card">
+          <h2>Reports</h2>
+          <p>One row per item sold, with gross, cost, net, amount paid and change. Opens in Excel or Numbers.</p>
+          <button class="btn btn--dark btn--full" id="export-csv" type="button">Export today's sales (CSV)</button>
+        </div>
+
+        <div class="card card--muted">
+          <h2>About</h2>
+          <div id="about-stats"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="tabbar" aria-label="Main">
+    <button class="tab" data-tab="dashboard" type="button"><svg aria-hidden="true"><use href="#i-dashboard"/></svg><span>Dashboard</span></button>
+    <button class="tab" data-tab="register" type="button"><svg aria-hidden="true"><use href="#i-register"/></svg><span>Register</span></button>
+    <button class="tab" data-tab="sales" type="button"><svg aria-hidden="true"><use href="#i-sales"/></svg><span>Sales</span></button>
+    <button class="tab" data-tab="profit" type="button"><svg aria-hidden="true"><use href="#i-profit"/></svg><span>Profit</span></button>
+    <button class="tab" data-tab="menu" type="button"><svg aria-hidden="true"><use href="#i-menu"/></svg><span>Menu</span></button>
+    <button class="tab" data-tab="backup" type="button"><svg aria-hidden="true"><use href="#i-backup"/></svg><span>Backup</span></button>
+  </nav>
+</div>
+
+<!-- ===== Checkout ===== -->
+<div class="modal modal--form" id="modal-checkout" role="dialog" aria-modal="true" aria-labelledby="checkout-title" hidden>
+  <div class="sheet">
+    <div class="sheet__head">
+      <h2 id="checkout-title">Checkout</h2>
+      <button class="link-btn" type="button" data-close>Cancel</button>
+    </div>
+    <div class="receipt" id="checkout-lines"></div>
+    <div class="receipt__total"><span>Total due</span><strong id="checkout-total">$0.00</strong></div>
+
+    <label class="paid">
+      <span class="paid__label">Amount paid</span>
+      <div class="paid__input">
+        <span aria-hidden="true">$</span>
+        <input id="cash-input" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off" enterkeyhint="done">
+      </div>
+    </label>
+    <div class="quick" id="quick-cash">
+      <button type="button" data-cents="exact">Exact</button>
+      <button type="button" data-cents="500">$5</button>
+      <button type="button" data-cents="1000">$10</button>
+      <button type="button" data-cents="2000">$20</button>
+    </div>
+    <div class="change change--none" id="change-row">
+      <span id="change-label">Change due</span>
+      <strong id="change-amount">—</strong>
+    </div>
+    <button class="btn btn--primary btn--big btn--full" id="confirm-sale" type="button">Complete sale</button>
+  </div>
+</div>
+
+<!-- ===== Sale complete overlay ===== -->
+<div class="done" id="done" role="status" hidden>
+  <div class="done__check"><svg aria-hidden="true"><use href="#i-check"/></svg></div>
+  <div class="done__title">Sale complete</div>
+  <div class="done__amount" id="done-amount">$0.00</div>
+  <div class="done__sub" id="done-sub"></div>
+  <div class="done__tap">Tap anywhere to continue</div>
+</div>
+
+<!-- ===== Add / edit item ===== -->
+<div class="modal modal--form" id="modal-item" role="dialog" aria-modal="true" aria-labelledby="item-modal-title" hidden>
+  <form class="sheet sheet--wide" id="item-form" novalidate>
+    <div class="sheet__head">
+      <h2 id="item-modal-title">Add item</h2>
+      <button class="link-btn" type="button" data-close>Cancel</button>
+    </div>
+
+    <div class="photo-row">
+      <div class="photo-preview" id="photo-preview">
+        <svg class="photo-preview__icon" aria-hidden="true"><use href="#i-camera"/></svg>
+      </div>
+      <div class="photo-actions">
+        <button class="btn btn--outline" id="photo-choose" type="button">Choose photo</button>
+        <button class="link-btn link-btn--danger" id="photo-remove" type="button" hidden>Remove photo</button>
+        <input type="file" id="photo-input" accept="image/*" hidden>
+        <p class="hint" id="photo-hint">Take a photo or pick one from your library. It is shrunk to save space.</p>
+      </div>
+    </div>
+
+    <label class="field">
+      <span>Name</span>
+      <input class="input" id="item-name" type="text" maxlength="40" autocomplete="off" autocapitalize="words" placeholder="e.g. Grilled Cheese">
+    </label>
+    <label class="field">
+      <span>Selling price</span>
+      <div class="money-input">
+        <span aria-hidden="true">$</span>
+        <input class="input" id="item-price" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
+      </div>
+    </label>
+    <label class="field">
+      <span>Emoji <em>optional · shows when there is no photo</em></span>
+      <input class="input input--emoji" id="item-emoji" type="text" maxlength="16" autocomplete="off" placeholder="Type any emoji">
+    </label>
+    <div class="emoji-picks" id="emoji-picks" aria-label="Quick emoji picks">
+      <button type="button">🍿</button><button type="button">🥤</button><button type="button">🍫</button><button type="button">💧</button>
+      <button type="button">🥨</button><button type="button">🍪</button><button type="button">🍬</button><button type="button">🧃</button>
+      <button type="button">🌭</button><button type="button">🍕</button><button type="button">🍩</button><button type="button">🍎</button>
+      <button type="button">🧁</button><button type="button">🍦</button><button type="button">☕</button><button type="button">🥪</button>
+    </div>
+
+    <fieldset class="cost">
+      <legend>Your cost <em>optional · needed for net income</em></legend>
+      <label class="field">
+        <span>Where I buy it</span>
+        <input class="input" id="item-supplier" type="text" maxlength="40" autocomplete="off" autocapitalize="words" placeholder="e.g. Costco" list="store-list">
+      </label>
+      <datalist id="store-list"></datalist>
+      <div class="seg seg--small seg--tight" id="cost-mode" role="tablist" aria-label="How you get this item">
+        <button class="seg__btn" type="button" role="tab" data-mode="recipe">From ingredients</button>
+        <button class="seg__btn is-active" type="button" role="tab" data-mode="pack">From a pack</button>
+        <button class="seg__btn" type="button" role="tab" data-mode="unit">Per unit</button>
+      </div>
+
+      <div class="cost__recipe" id="cost-recipe" hidden>
+        <p class="hint" id="recipe-hint">Add the ingredients one of these uses and how much of each.</p>
+        <div class="recipe" id="recipe-rows"></div>
+        <div class="row-btns recipe__actions">
+          <button class="btn btn--outline" id="recipe-add" type="button">+ Add ingredient</button>
+          <button class="link-btn" id="recipe-new" type="button">New ingredient…</button>
+        </div>
+        <label class="field">
+          <span>Other cost per item <em>packaging, napkins… optional</em></span>
+          <div class="money-input"><span aria-hidden="true">$</span><input class="input" id="item-extra-cost" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
+        </label>
+      </div>
+
+      <div class="cost__pack" id="cost-pack">
+        <label class="field">
+          <span>Pack price</span>
+          <div class="money-input"><span aria-hidden="true">$</span><input class="input" id="item-pack-price" type="text" inputmode="decimal" placeholder="30.00" autocomplete="off"></div>
+        </label>
+        <label class="field">
+          <span>Units per pack</span>
+          <input class="input" id="item-pack-qty" type="text" inputmode="numeric" placeholder="30" autocomplete="off">
+        </label>
+      </div>
+      <div class="cost__unit" id="cost-unit" hidden>
+        <label class="field">
+          <span>Cost per unit</span>
+          <div class="money-input"><span aria-hidden="true">$</span><input class="input" id="item-unit-cost" type="text" inputmode="decimal" placeholder="1.00" autocomplete="off"></div>
+        </label>
+      </div>
+      <div class="cost__result" id="cost-result"></div>
+    </fieldset>
+
+    <div class="form-error" id="item-error" role="alert" hidden></div>
+    <div class="modal__actions">
+      <button class="btn btn--soft-danger" id="item-remove" type="button" hidden>Remove</button>
+      <button class="btn btn--primary" id="item-save" type="submit">Add item</button>
+    </div>
+  </form>
+</div>
+
+<!-- ===== Add / edit ingredient ===== -->
+<div class="modal modal--form modal--stack" id="modal-ingredient" role="dialog" aria-modal="true" aria-labelledby="ingredient-modal-title" hidden>
+  <form class="sheet" id="ingredient-form" novalidate>
+    <div class="sheet__head">
+      <h2 id="ingredient-modal-title">Add ingredient</h2>
+      <button class="link-btn" type="button" data-close>Cancel</button>
+    </div>
+    <label class="field">
+      <span>Name</span>
+      <input class="input" id="ing-name" type="text" maxlength="40" autocomplete="off" autocapitalize="words" placeholder="e.g. Butter">
+    </label>
+    <label class="field">
+      <span>What one portion is called</span>
+      <input class="input" id="ing-unit" type="text" maxlength="20" autocomplete="off" placeholder="tbsp, slice, each…">
+    </label>
+    <div class="emoji-picks unit-picks" id="unit-picks" aria-label="Quick unit picks"></div>
+
+    <fieldset class="cost">
+      <legend>Prices by store <em>what a package costs and how many portions it holds</em></legend>
+      <div class="prices" id="price-rows"></div>
+      <div class="row-btns">
+        <button class="btn btn--outline" id="price-add" type="button">+ Add another store</button>
+      </div>
+      <div class="cost__result" id="ing-result"></div>
+    </fieldset>
+    <p class="hint" id="ing-usage" hidden></p>
+    <div class="form-error" id="ing-error" role="alert" hidden></div>
+    <div class="modal__actions">
+      <button class="btn btn--soft-danger" id="ing-delete" type="button" hidden>Delete</button>
+      <button class="btn btn--primary" id="ing-save" type="submit">Add ingredient</button>
+    </div>
+  </form>
+</div>
+
+<!-- ===== My store ===== -->
+<div class="modal modal--form modal--stack" id="modal-store" role="dialog" aria-modal="true" aria-labelledby="store-modal-title" hidden>
+  <form class="sheet" id="store-form" novalidate>
+    <div class="sheet__head">
+      <h2 id="store-modal-title">My store</h2>
+      <button class="link-btn" type="button" data-close>Cancel</button>
+    </div>
+    <p class="hint hint--block">Costs use this store's prices whenever an ingredient has one. Ingredients can hold prices for several stores, and “Look up” buttons open the store's own search so you can check the local price and type it in.</p>
+    <label class="field">
+      <span>Store</span>
+      <select class="input" id="store-select"></select>
+    </label>
+    <label class="field" id="store-custom-field" hidden>
+      <span>Store name</span>
+      <input class="input" id="store-custom" type="text" maxlength="40" autocomplete="off" autocapitalize="words" placeholder="e.g. Joe's Market">
+    </label>
+    <label class="field">
+      <span>Location <em>used when looking up prices</em></span>
+      <select class="input" id="store-location">
+        <option value="West Palm Beach, FL">West Palm Beach, FL</option>
+        <option value="Davie, FL">Davie, FL</option>
+        <option value="__other">Other…</option>
+      </select>
+    </label>
+    <label class="field" id="store-location-custom-field" hidden>
+      <span>Location name</span>
+      <input class="input" id="store-location-custom" type="text" maxlength="60" autocomplete="off" autocapitalize="words" placeholder="e.g. Boca Raton, FL">
+    </label>
+    <div class="form-error" id="store-error" role="alert" hidden></div>
+    <div class="modal__actions">
+      <button class="btn btn--primary" id="store-save" type="submit">Save</button>
+    </div>
+  </form>
+</div>
+
+<!-- ===== Pricing detail ===== -->
+<div class="modal" id="modal-pricing" role="dialog" aria-modal="true" aria-labelledby="pricing-title" hidden>
+  <div class="sheet">
+    <div class="sheet__head">
+      <h2 id="pricing-title">Item</h2>
+      <button class="link-btn" type="button" data-close>Done</button>
+    </div>
+    <h3 class="sub-title">What it costs to make</h3>
+    <div class="receipt" id="pricing-breakdown"></div>
+    <div class="receipt__total receipt__total--small"><span>Cost per item</span><strong id="pricing-cost">$0.00</strong></div>
+    <h3 class="sub-title">Price options</h3>
+    <div class="ladder" id="pricing-ladder"></div>
+    <p class="hint hint--block" id="pricing-current"></p>
+    <button class="btn btn--primary btn--full" id="pricing-apply" type="button">Use suggested price</button>
+  </div>
+</div>
+
+<!-- ===== Spreadsheet import ===== -->
+<div class="modal modal--form" id="modal-import" role="dialog" aria-modal="true" aria-labelledby="import-title" hidden>
+  <div class="sheet sheet--wide">
+    <div class="sheet__head">
+      <h2 id="import-title">Import a spreadsheet</h2>
+      <button class="link-btn" type="button" data-close>Cancel</button>
+    </div>
+    <p class="hint hint--block">One row per ingredient an item uses, with these columns: <b>Item, Ingredient, Amount used, Package price, Units per package, Unit, Store</b> and optionally <b>Selling price</b>. Leave Item blank for an ingredient you only want to record. For something you sell straight from a pack (drinks, chips, cookies), leave Ingredient blank and put the pack price and count on the item's row.</p>
+    <label class="field">
+      <span>Google Sheets link</span>
+      <div class="link-row">
+        <input class="input" id="import-link" type="url" inputmode="url" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="https://docs.google.com/spreadsheets/d/…">
+        <button class="btn btn--primary" id="import-fetch" type="button">Read sheet</button>
+      </div>
+    </label>
+    <p class="hint hint--block" id="import-link-hint">In Google Sheets tap <b>Share</b> and set General access to <b>Anyone with the link</b>. The link is remembered, so next time you just tap “Update from spreadsheet”. Needs internet.</p>
+    <div class="row-btns">
+      <button class="btn btn--primary" id="import-site-csv" type="button">Load prices.csv from this website</button>
+      <button class="btn btn--outline" id="download-template" type="button">Download template (CSV)</button>
+      <button class="btn btn--outline" id="import-sheet-file" type="button">Choose a CSV file…</button>
+      <button class="link-btn link-btn--danger" id="import-unlink" type="button" hidden>Forget link</button>
+      <input type="file" id="import-sheet-input" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain" hidden>
+    </div>
+    <label class="field">
+      <span>Or copy the cells in your spreadsheet and paste them here</span>
+      <textarea class="input input--area" id="import-text" spellcheck="false" placeholder="Item, Ingredient, Amount used, Package price, Units per package, Unit&#10;Grilled Cheese, Butter, 1, 3.00, 8, tbsp"></textarea>
+    </label>
+    <div class="import-preview" id="import-preview" hidden></div>
+    <div class="modal__actions">
+      <button class="btn btn--outline" type="button" data-close>Cancel</button>
+      <button class="btn btn--primary" id="import-run" type="button" disabled>Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Sale detail ===== -->
+<div class="modal" id="modal-sale" role="dialog" aria-modal="true" aria-labelledby="sale-title" hidden>
+  <div class="sheet">
+    <div class="sheet__head">
+      <h2 id="sale-title">Sale details</h2>
+      <button class="link-btn" type="button" data-close>Done</button>
+    </div>
+    <p class="hint" id="sale-when"></p>
+    <div class="receipt" id="sale-lines"></div>
+    <div class="math math--compact">
+      <div class="math__row"><span class="math__label">Gross income</span><strong id="sale-gross">$0.00</strong></div>
+      <div class="math__row math__row--minus"><span class="math__label">Cost</span><strong id="sale-cost">$0.00</strong></div>
+      <div class="math__row math__row--total"><span class="math__label">Net income</span><strong id="sale-net">$0.00</strong></div>
+    </div>
+    <div class="math math--compact math--paid">
+      <div class="math__row"><span class="math__label">Amount paid</span><strong id="sale-paid">—</strong></div>
+      <div class="math__row"><span class="math__label">Change given</span><strong id="sale-change">—</strong></div>
+    </div>
+    <div class="note" id="sale-note" hidden></div>
+    <button class="btn btn--soft-danger btn--full" id="delete-sale" type="button">Delete this sale</button>
+  </div>
+</div>
+
+<!-- ===== Confirm dialog ===== -->
+<div class="modal modal--confirm" id="modal-confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
+  <div class="sheet sheet--small">
+    <h2 id="confirm-title">Are you sure?</h2>
+    <p id="confirm-message"></p>
+    <div class="modal__actions">
+      <button class="btn btn--outline" id="confirm-cancel" type="button" data-close>Cancel</button>
+      <button class="btn btn--danger" id="confirm-ok" type="button">OK</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

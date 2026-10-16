@@ -1,0 +1,35 @@
+Item,Ingredient,Amount used,Package price,Units per package,Unit,Store,Selling price,Costco product,Price source,Notes
+,Bread slice,,6.99,38,slice,Costco,,Not listed on costco.com,Your sheet,"$6.99 for about 38 slices (2-loaf pack). Bakery items never show online; check the warehouse."
+,American cheese,,12.49,96,slice,Costco,,"Kraft Singles American Cheese, 96 slices, 4 lbs",costco.com Davie 2026-10-16,Warehouse price.
+,Colby jack,,,,slice,Costco,,Not listed on costco.com,,"Finlandia Premium Cheese Slices, 2 lbs is $8.99 at Davie if you want a real-cheese slice."
+,Pepper jack,,,,slice,Costco,,Not listed on costco.com,,Check the cheese cooler in the warehouse.
+,Bacon,,,,slice,Costco,,Not listed on costco.com,,"Only bacon crumbles ($10.99, 20 oz) show online. Kirkland bacon 4-pack is warehouse-only."
+,Ham,,8.99,28,slice,Costco,,"Kirkland Signature Uncured Black Forest Ham, 28 oz",costco.com Davie 2026-10-16,Warehouse price. 28 slices assumes about 1 oz per slice.
+,Butter,,10.99,64,tbsp,Costco,,"Kirkland Signature Grass-Fed Butter, 8 oz, 4-count",costco.com Davie 2026-10-16,Warehouse price. Kerrygold Salted 4-count is $14.99. Plain Kirkland salted butter is not listed online.
+,Hot dog buns,,4.69,16,each,Costco,,Not listed on costco.com,Your sheet,"Pack of 16 for $4.69, from your sheet."
+,Weiners,,14.99,28,each,Costco,,"Hebrew National Beef Franks, 12 oz, 4-count, 28 total",costco.com Davie 2026-10-16,"Warehouse price, matches your sheet. Kirkland Beef Hot Dogs 36 links are $18.99 ($0.53 each)."
+,Hamburger buns,,,,each,Costco,,Not listed on costco.com,,Bakery item; check the warehouse and fill in the pack price and count.
+,Hamburger patties,,32.99,18,each,Costco,,"Kirkland Signature Ground Beef Patties, 1/3 lb, 18-count",costco.com Davie 2026-10-16,Warehouse price. Grass-fed 15-count is also $32.99.
+,Relish,,12.39,124,squeeze,Costco,,Not found on costco.com,Your sheet,Nothing for relish online.
+,Ketchup,,13.99,112,squeeze,Costco,,"Heinz Simply Tomato Ketchup, 44 oz, 3-count",costco.com Davie 2026-10-16,Warehouse price; your sheet had $12.29. 112 squeezes is your serving count.
+,Mustard,,6.49,106,squeeze,Costco,,"French's Classic Yellow Mustard, 30 oz, 2-count",costco.com Davie 2026-10-16,Online price (2-day delivery); your sheet had $6.36.
+,Cooked onion,,5.00,16,scoop,Costco,,Not listed on costco.com,Your sheet,Fresh produce is warehouse-only.
+Grilled Cheese,Bread slice,2,,,,,3.25,,,Selling price you chose in the app.
+Grilled Cheese,American cheese,2,,,,,,,,
+Grilled Cheese,Butter,1,,,,,,,,
+Hot Dog,Hot dog buns,1,,,,,3.25,,,Selling price you chose in the app (your sheet had $4.00).
+Hot Dog,Weiners,1,,,,,,,,
+Hot Dog,Relish,1,,,,,,,,
+Hot Dog,Ketchup,1,,,,,,,,
+Hot Dog,Mustard,1,,,,,,,,
+Hot Dog,Cooked onion,1,,,,,,,,
+Hamburger,Hamburger patties,1,,,,,5.00,,,Add the bun once you know its pack price.
+Hamburger,Ketchup,1,,,,,,,,
+Soda,,,18.49,35,can,Costco,2.25,"Coca-Cola Classic, 12 fl oz, 35-count",costco.com Davie 2026-10-16,Sold by the pack. Warehouse price; your sheet had $19.99. Coke Zero and Diet Coke 35-packs are the same price.
+Gatorade,,,17.99,24,bottle,Costco,3.00,"Gatorade Thirst Quencher Variety Pack, 20 fl oz, 24-count",costco.com Davie 2026-10-16,Sold by the pack. Warehouse price; your sheet had $22.49. The 12 oz 28-count is $15.69 online after $3.30 off.
+Water,,,7.79,40,bottle,Costco,1.00,Not listed on costco.com (only a 48-case pallet),Your sheet,Sold by the pack. Kirkland 40-pack is warehouse-only.
+Lemonade,,,7.59,16,cup,Costco,2.00,"Kirkland Signature Organic Lemonade, 96 fl oz, 2-count",costco.com Davie 2026-10-16,Online price. 16 cups of 12 oz from 192 oz. Country Time drink mix 82.5 oz is $10.99 and makes far more.
+Jamaican Beef Patty,,,10.59,10,each,Costco,4.25,Not found on costco.com,Your sheet,Sold by the pack. Only Kirkland burger patties come up online.
+Chips,,,23.49,54,bag,Costco,2.00,"Frito Lay Classic Mix, 1 oz, Variety Pack, 54-count",costco.com Davie 2026-10-16,"Sold by the pack. Online price, in stock at Davie."
+Cookie,,,14.99,40,pack,Costco,1.50,"Nabisco Cookies & Crackers, Variety Pack, 1 oz, 40-count",costco.com Davie 2026-10-16,Sold by the pack. Online price. OREO Variety 60-count is $15.99 after $3 off; Famous Amos 42-count is $20.99.
+Popsicle,,,,,,,,Not found on costco.com,,No Costco price found yet; add the pack price and count when you know them.
